@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Analyse des pratiques pédagogiques avec IAG</title>
+
+<style>
+body{font-family: Arial, sans-serif;margin:0;background:#f4f6f8;}
+header{background:#2c3e50;color:white;padding:20px;}
+h1{margin:0;}
+.toolbar{padding:10px;background:#ecf0f1;}
+button{padding:8px 14px;margin-right:10px;border:none;color:white;cursor:pointer;border-radius:4px;}
+.btn-excel{background:#27ae60;}
+.btn-json{background:#8e44ad;}
+.btn-import{background:#e67e22;}
+.btn-reset{background:#c0392b;}
+
+.tabs{display:flex;background:#34495e;}
+.tab{padding:12px 18px;color:white;cursor:pointer;}
+.tab.active{background:#1abc9c;}
+
+.section{display:none;padding:20px;}
+.section.active{display:block;}
+
+table{width:100%;border-collapse:collapse;background:white;}
+th,td{border:1px solid #ddd;padding:8px;vertical-align:top;}
+th{background:#2c3e50;color:white;}
+
+textarea{width:100%;height:60px;resize:vertical;}
+
+.dropzone{
+border:2px dashed #aaa;
+padding:10px;
+text-align:center;
+background:#fafafa;
+cursor:pointer;
+}
+
+.fileList{font-size:12px;margin-top:5px;color:#333;}
+.addRow{margin-top:10px;}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>Analyse des pratiques pédagogiques avec IAG</h1>
+</header>
+
+<div class="toolbar">
+<button class="btn-excel" onclick="exportExcel()">Exporter Excel</button>
+<button class="btn-json" onclick="exportJSON()">Exporter JSON</button>
+<button class="btn-import" onclick="document.getElementById('jsonFile').click()">Importer JSON</button>
+<button class="btn-reset" onclick="resetData()">Effacer</button>
+<input type="file" id="jsonFile" style="display:none" accept=".json" onchange="importJSON(event)">
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div id="sections"></div>
+
+<script>
+
+const practices=[
+"PRATIQUE 1 - scénario avec une IAG",
+"PRATIQUE 2 - Différencier avec une IAG",
+"PRATIQUE 3 - Différencier avec une IAG - Podcast, mappe conceptuelle, activités interactives",
+"PRATIQUE 4 - Synthèse vidéo avec IA et résumé graphique",
+"PRATIQUE 5 - Développer un outil à l'aide d'une IAG"
+]
+
+const columns=[
+"IA EMPLOYEE","AVANTAGES","LIMITES","USAGE PEDAGOGIQUE","PROMPTS EMPLOYÉS"
+]
+
+const tabs=document.getElementById("tabs")
+const sections=document.getElementById("sections")
+
+let data=JSON.parse(localStorage.getItem("iag_table"))||{}
+
+init()
+
+function init(){
+practices.forEach((title,i)=>{
+
+const tab=document.createElement("div")
+tab.className="tab"
+tab.innerText="Pratique "+(i+1)
+tab.onclick=()=>openTab(i)
+tabs.appendChild(tab)
+
+const section=document.createElement("div")
+section.className="section"
+section.id="section"+i
+
+const titleEl=document.createElement("h2")
+titleEl.innerText=title
+
+const table=document.createElement("table")
+table.id="table"+i
+
+const header=document.createElement("tr")
+columns.forEach(col=>{
+const th=document.createElement("th")
+th.innerText=col
+header.appendChild(th)
+})
+
+table.appendChild(header)
+
+const addBtn=document.createElement("button")
+addBtn.innerText="Ajouter une ligne"
+addBtn.className="addRow"
+addBtn.onclick=()=>addRow(i)
+
+section.appendChild(titleEl)
+section.appendChild(table)
+section.appendChild(addBtn)
+sections.appendChild(section)
+
+if(!data[i]) data[i]=[]
+data[i].forEach(row=>addRow(i,row))
+
+})
+
+openTab(0)
+}
+
+function openTab(index){
+document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",i===index))
+document.querySelectorAll(".section").forEach((s,i)=>s.classList.toggle("active",i===index))
+}
+
+function addRow(sectionIndex,rowData=[]){
+
+const table=document.getElementById("table"+sectionIndex)
+const tr=document.createElement("tr")
+
+for(let c=0;c<4;c++){
+const td=document.createElement("td")
+const textarea=document.createElement("textarea")
+textarea.value=rowData[c]||""
+textarea.oninput=saveData
+td.appendChild(textarea)
+tr.appendChild(td)
+}
+
+const tdFile=document.createElement("td")
+const dropzone=document.createElement("div")
+dropzone.className="dropzone"
+dropzone.innerText="Déposer fichier ou cliquer"
+
+const input=document.createElement("input")
+input.type="file"
+input.multiple=true
+input.style.display="none"
+
+const fileList=document.createElement("div")
+fileList.className="fileList"
+
+dropzone.onclick=()=>input.click()
+
+input.onchange=(e)=>showFiles(e.target.files,fileList)
+
+dropzone.addEventListener("dragover",e=>e.preventDefault())
+
+dropzone.addEventListener("drop",e=>{
+e.preventDefault()
+showFiles(e.dataTransfer.files,fileList)
+})
+
+tdFile.appendChild(dropzone)
+tdFile.appendChild(input)
+tdFile.appendChild(fileList)
+
+tr.appendChild(tdFile)
+table.appendChild(tr)
+}
+
+function showFiles(files,list){
+list.innerHTML=""
+Array.from(files).forEach(f=>{
+const div=document.createElement("div")
+div.innerText=f.name
+list.appendChild(div)
+})
+}
+
+function saveData(){
+data={}
+practices.forEach((p,i)=>{
+data[i]=[]
+const rows=document.querySelectorAll("#table"+i+" tr")
+rows.forEach((row,r)=>{
+if(r===0) return
+const cells=row.querySelectorAll("textarea")
+const rowData=[]
+cells.forEach(cell=>rowData.push(cell.value))
+data[i].push(rowData)
+})
+})
+localStorage.setItem("iag_table",JSON.stringify(data))
+}
+
+function exportJSON(){
+saveData()
+const blob=new Blob([JSON.stringify(data)],{type:"application/json"})
+const a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="tableau_IAG.json"
+a.click()
+}
+
+function importJSON(event){
+const file=event.target.files[0]
+const reader=new FileReader()
+
+reader.onload=function(e){
+const imported=JSON.parse(e.target.result)
+
+Object.keys(imported).forEach(i=>{
+if(!data[i]) data[i]=[]
+data[i]=data[i].concat(imported[i])
+})
+
+localStorage.setItem("iag_table",JSON.stringify(data))
+location.reload()
+}
+
+reader.readAsText(file)
+}
+
+function exportExcel(){
+saveData()
+
+let html="<table>"
+
+practices.forEach((p,i)=>{
+html+="<tr><th colspan='5'>"+p+"</th></tr>"
+html+="<tr>"+columns.map(c=>"<th>"+c+"</th>").join("")+"</tr>"
+
+data[i].forEach(row=>{
+html+="<tr>"+row.map(c=>"<td>"+c+"</td>").join("")+"<td></td></tr>"
+})
+})
+
+html+="</table>"
+
+const blob=new Blob([html],{type:"application/vnd.ms-excel"})
+const a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="analyse_IAG.xls"
+a.click()
+}
+
+function resetData(){
+if(confirm("Effacer toutes les données ?")){
+localStorage.removeItem("iag_table")
+location.reload()
+}
+}
+
+</script>
+
+</body>
+</html>
